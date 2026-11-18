@@ -1,0 +1,7 @@
+---
+all:
+  hosts:
+    dns:
+      ansible_host: 192.168.57.5
+    negocio:
+      ansible_host: 192.168.57.7
