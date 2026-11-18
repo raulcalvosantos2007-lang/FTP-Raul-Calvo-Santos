@@ -1,0 +1,20 @@
+# Ejemplo de archivo de variables para Ansible Vault.
+#
+# NO guardes este archivo en claro en el repositorio. Copia su contenido en
+# ftp/vars/vault.yml y cífralo con:
+#
+#   cp ftp/vars/vault.yml.example ftp/vars/vault.yml
+#   ansible-vault encrypt ftp/vars/vault.yml
+#
+# Los hashes siguientes corresponden a las contraseñas de práctica:
+#   juan -> juan
+#   ana  -> ana
+#
+# Se generaron con:
+#   mkpasswd --method=sha-512
+#
+# En un entorno real habría que usar contraseñas fuertes y no publicar ni
+# siquiera sus hashes.
+ftp_password_hashes:
+  juan: '$6$f8P7SCNuLX3MGiKR$W95i/5ZANpC/m4YsXnot/fUWhIV4fi2.H8/HZZbwmqP3jPyKHpynHU4jMzh/V28Gt9ayQXMMdqVszBS.ZSA7P1'
+  ana: '$6$2vr2ZHvAWCTDZGHk$G.5DlbEiMlWwqEho8rUMM2FPOktnkbF2/t3f4AYjFAR5jeFeIwV6ondTL4vwC8liSwrZPHufTey5wsrkPB2CK1'
