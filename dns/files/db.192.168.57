@@ -1,0 +1,14 @@
+$TTL 604800
+
+@   IN  SOA dns.raul.test. admin.raul.test. (
+        2026111601 ; serial
+        604800     ; refresh
+        86400      ; retry
+        2419200    ; expire
+        604800     ; negative TTL
+    )
+
+@   IN  NS  dns.raul.test.
+
+5   IN  PTR dns.raul.test.
+7   IN  PTR negocio.raul.test.
