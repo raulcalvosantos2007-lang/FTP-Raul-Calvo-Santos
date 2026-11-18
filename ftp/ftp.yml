@@ -1,0 +1,145 @@
+---
+- name: Provisionar el servidor FTP
+  hosts: negocio
+  become: true
+
+  vars:
+    ftp_domain: raul.test
+    ftp_cert_dir: /etc/ssl/raul
+    ftp_users:
+      - juan
+      - ana
+
+  vars_files:
+    - vars/vault.yml
+
+  tasks:
+    - name: Instalar vsftpd y dependencias
+      ansible.builtin.apt:
+        name:
+          - vsftpd
+          - python3-cryptography
+        state: present
+        update_cache: true
+
+    - name: Crear grupo de usuarios FTP
+      ansible.builtin.group:
+        name: ftpusers
+        state: present
+
+    - name: Crear grupo de publicación web
+      ansible.builtin.group:
+        name: webpublish
+        state: present
+
+    - name: Crear usuarios FTP
+      ansible.builtin.user:
+        name: "{{ item }}"
+        groups: ftpusers
+        append: true
+        create_home: true
+        password: "{{ ftp_password_hashes[item] }}"
+        state: present
+      loop: "{{ ftp_users }}"
+
+    - name: Añadir a ana al grupo de publicación web
+      ansible.builtin.user:
+        name: ana
+        groups: webpublish
+        append: true
+
+    - name: Preparar el document root para la publicación de ana
+      ansible.builtin.file:
+        path: /var/www/html
+        state: directory
+        owner: root
+        group: webpublish
+        mode: "2775"
+
+    - name: Crear lista de usuarios excluidos del chroot (ana)
+      ansible.builtin.copy:
+        dest: /etc/vsftpd.chroot_list
+        content: "ana\n"
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Reiniciar vsftpd
+
+    - name: Crear directorio de configuración por usuario
+      ansible.builtin.file:
+        path: /etc/vsftpd_user_conf
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Configurar el directorio raíz FTP de ana
+      ansible.builtin.copy:
+        dest: /etc/vsftpd_user_conf/ana
+        content: |
+          local_root=/var/www/html
+          write_enable=YES
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Reiniciar vsftpd
+
+    - name: Crear directorio para el certificado
+      ansible.builtin.file:
+        path: "{{ ftp_cert_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0750"
+
+    - name: Generar clave privada del certificado
+      community.crypto.openssl_privatekey:
+        path: "{{ ftp_cert_dir }}/vsftpd.key"
+        type: rsa
+        size: 2048
+        owner: root
+        group: root
+        mode: "0600"
+
+    - name: Generar CSR del certificado
+      community.crypto.openssl_csr:
+        path: "{{ ftp_cert_dir }}/vsftpd.csr"
+        privatekey_path: "{{ ftp_cert_dir }}/vsftpd.key"
+        common_name: "ftp.{{ ftp_domain }}"
+        subject_alt_name:
+          - "DNS:ftp.{{ ftp_domain }}"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Generar certificado autofirmado
+      community.crypto.openssl_certificate:
+        path: "{{ ftp_cert_dir }}/vsftpd.crt"
+        privatekey_path: "{{ ftp_cert_dir }}/vsftpd.key"
+        csr_path: "{{ ftp_cert_dir }}/vsftpd.csr"
+        provider: selfsigned
+        selfsigned_not_after: "+365d"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Copiar configuración de vsftpd
+      ansible.builtin.copy:
+        src: files/vsftpd.conf
+        dest: /etc/vsftpd.conf
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Reiniciar vsftpd
+
+    - name: Habilitar e iniciar vsftpd
+      ansible.builtin.service:
+        name: vsftpd
+        enabled: true
+        state: started
+
+  handlers:
+    - name: Reiniciar vsftpd
+      ansible.builtin.service:
+        name: vsftpd
+        state: restarted
